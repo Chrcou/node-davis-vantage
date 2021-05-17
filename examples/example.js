@@ -5,7 +5,7 @@ var config = {};
 // Enable Debug Mode by uncommenting the line below
 config.debug = true;
 
-config.serialPort = '/dev/ttyUSB0';
+config.serialPort = "/dev/tty.usbserial-0001";
 
 var davisReader = new DavisVantage(config);
 

@@ -1,6 +1,6 @@
-var EventEmitter = require('events');
-var util = require('util');
-var serialPort = require('serialport');
+var EventEmitter = require("events");
+var util = require("util");
+var serialPort = require("serialport");
 
 var serialPortUsed = false;
 var availablePorts = [];
@@ -8,12 +8,12 @@ var constructor;
 var timer;
 var deviceAwake = false;
 
-var parsePacket = require('./lib/parsePacket');
-var debug = require('./lib/debug');
-var config = require('./config/config.json');
+var parsePacket = require("./lib/parsePacket");
+var debug = require("./lib/debug");
+var config = require("./config/config.json");
 
 function DavisReader(options) {
-  if (typeof options !== 'object') {
+  if (typeof options !== "object") {
     options = {};
   }
 
@@ -30,7 +30,7 @@ function DavisReader(options) {
   } else {
     serialPort.list(function (err, ports) {
       if (err) {
-        throw new Error('Serialports could not be listed: ' + err);
+        throw new Error("Serialports could not be listed: " + err);
       }
 
       debug.logAvailablePorts(ports);
@@ -55,55 +55,76 @@ DavisReader.prototype.getSerialPort = function () {
 
 module.exports = DavisReader;
 
-
 /**
  * Setup serial port connection
  */
 function _setupSerialConnection() {
   var port = availablePorts[0];
-
-  debug.log('Trying to connect to Davis VUE via port: ' + port);
+  let data64;
+  let data36;
+  debug.log("Trying to connect to Davis VUE via port: " + port);
 
   // Open serial port connection
   var sp = new serialPort(port, config.serialPort);
 
-  var received = '';
+  var received = "";
 
-  sp.on('open', function () {
-    debug.log('Serial connection established, waking up device.');
-    sp.write('\n', function(err) {
+  sp.on("open", function () {
+    debug.log("Serial connection established, waking up device.");
+    sp.write("\n", function (err) {
       if (err) {
-        return constructor.emit('Error on write: ', err.message);
+        return constructor.emit("Error on write: ", err.message);
       }
     });
 
-
-    sp.on('data', function (data) {
-      if (!deviceAwake){
-        if (data.toString() === '\n\r'){
-          debug.log('Device is awake');
+    sp.on("data", function (data) {
+      if (!deviceAwake) {
+        if (data.toString() === "\n\r") {
+          debug.log("Device is awake");
           serialPortUsed = port;
-          constructor.emit('connected', port);
+          constructor.emit("connected", port);
 
-          sp.write('LOOP 1\n');
+          sp.write("LOOP 1\n");
           return;
         }
       }
       debug.log("Received data, length:" + data.length);
-      if (data.length == 100){
+
+      if (data.length < 66) {
+        if (data.length === 64) {
+          data64 = data;
+        }
+        if (data.length === 36) {
+          data36 = data;
+        }
+        if ((data64 ?? []).length === 64 && (data36 ?? []).length === 36) {
+          var arr = [data64, data36];
+
+          var buf = Buffer.concat(arr);
+          data = buf;
+          console.log("assemblée");
+          console.log(data);
+          
+        }
+      }
+      if (data.length == 100) {
         // remove ack
         data = data.slice(1);
       }
-      var parsedData = parsePacket(data);
-      constructor.emit('data', parsedData);
+      try {
+        var parsedData = parsePacket(data);
+      } catch {
+        var parsedData = null;
+      }
+      constructor.emit("data", parsedData);
       setTimeout(function () {
-        sp.write('LOOP 1\n');
+        sp.write("LOOP 1\n");
       }, 2000);
     });
   });
 
-  sp.on('error', function (error) {
-    constructor.emit('error', error);
+  sp.on("error", function (error) {
+    constructor.emit("error", error);
 
     // Reject this port if we haven't found the correct port yet
     if (!serialPortUsed) {
@@ -111,8 +132,8 @@ function _setupSerialConnection() {
     }
   });
 
-  sp.on('close', function () {
+  sp.on("close", function () {
     deviceAwake = false;
-    constructor.emit('close');
+    constructor.emit("close");
   });
 }
