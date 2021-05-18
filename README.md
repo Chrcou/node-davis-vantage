@@ -1,3 +1,5 @@
+Forked from : https://github.com/ruudboon/node-davis-vantage
+
 # Davis Vantage
 Decodes serial data from the Davis Vantage VUE
 
