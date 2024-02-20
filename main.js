@@ -1,6 +1,6 @@
 var EventEmitter = require("events");
 var util = require("util");
-var serialPort = require("serialport");
+const {SerialPort} = require("serialport");
 
 var serialPortUsed = false;
 var availablePorts = [];
@@ -28,7 +28,7 @@ function DavisReader(options) {
     availablePorts[0] = options.serialPort;
     _setupSerialConnection();
   } else {
-    serialPort.list(function (err, ports) {
+    SerialPort.list(function (err, ports) {
       if (err) {
         throw new Error("Serialports could not be listed: " + err);
       }
@@ -65,7 +65,7 @@ function _setupSerialConnection() {
   debug.log("Trying to connect to Davis VUE via port: " + port);
 
   // Open serial port connection
-  var sp = new serialPort(port, config.serialPort);
+  var sp = new SerialPort({path:port, ...config.serialPort});
 
   var received = "";
 
